@@ -1,4 +1,10 @@
+FastestResponsesMain$MessageFields.class
+FastestResponsesMain$MessageWithResponse.class
 Main.class
 DirectAndBroadcastMain.class
 Utils.class
+FastestResponsesMain$ResponseCmp.class
+FastestResponsesMain$UnorderedUserPair.class
+FastestResponsesMain$1.class
+FastestResponsesMain.class
 SerializableComparator.class
