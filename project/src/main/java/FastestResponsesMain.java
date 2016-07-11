@@ -30,7 +30,7 @@ public class FastestResponsesMain {
     public String prettyPrint() {
       return String.format("Original: %s\n Response: %s\n Response Time:%s seconds",
           initial.prettyPrint(),
-          response.prettyPrint(),
+          response.filepath,
           responseTime.getSeconds());
     }
   }
@@ -111,7 +111,7 @@ public class FastestResponsesMain {
     Collection<MessageWithResponse> withResponses = emailsGroupedByParticipants
         .values()
         .flatMap(FastestResponsesMain::groupIntoResponses)
-        .takeOrdered(10, new ResponseCmp());
+        .takeOrdered(5, new ResponseCmp());
 
     System.out.println("5 fastest response times:");
     withResponses.forEach(m -> System.out.println(m.prettyPrint()));
@@ -149,10 +149,11 @@ public class FastestResponsesMain {
   }
 
   private static Iterable<MessageWithResponse> groupIntoResponses(Iterable<MessageFields> messages) {
-    // First, sort them from smallest subject length to largest. This means that replies will always be later
-    // in the list.
+    // First, sort them from smallest subject length to largest and then from earliest to latest.
+    // This means that replies will always be later in the list.
     List<MessageFields> sortedMessages =
         StreamSupport.stream(messages.spliterator(), false)
+            .sorted((o1, o2) -> o1.sentDate.compareTo(o2.sentDate))
             .sorted((o1, o2) -> o1.subject.length() - o2.subject.length())
             .collect(Collectors.toList());
 
