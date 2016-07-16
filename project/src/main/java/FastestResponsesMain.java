@@ -65,46 +65,13 @@ public class FastestResponsesMain {
     }
   }
 
-  // We use this to group all messages between A,B
-  private static class UnorderedUserPair implements Serializable {
-    final String user1;
-    final String user2;
-    final int hashcode;
-
-    UnorderedUserPair(String in1, String in2) {
-      if (in1.compareTo(in2) < 0) {
-        user1 = in1;
-        user2 = in2;
-      } else {
-        user1 = in2;
-        user2 = in1;
-      }
-
-      hashcode = (user1 + user2).hashCode();
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      if (obj != null && (obj instanceof UnorderedUserPair)) {
-        UnorderedUserPair other = (UnorderedUserPair) obj;
-        return other.user1.equals(user1) && other.user2.equals(user2);
-      }
-      return false;
-    }
-
-    @Override
-    public int hashCode() {
-      return hashcode;
-    }
-  }
-
   public static void main(String[] args) {
-    String logPath = Utils.path;
+    String logPath = Utils.emailsPath;
     SparkConf conf = new SparkConf().setAppName("Simple Application");
     JavaSparkContext sc = new JavaSparkContext(conf);
     JavaPairRDD<String, String> logData = sc.wholeTextFiles(logPath);
 
-    JavaPairRDD<UnorderedUserPair, Iterable<MessageFields>> emailsGroupedByParticipants = logData
+    JavaPairRDD<Utils.UnorderedUserPair, Iterable<MessageFields>> emailsGroupedByParticipants = logData
         .flatMapToPair(p -> readRelevantFields(p._1, p._2))
         .groupByKey();
 
@@ -120,7 +87,7 @@ public class FastestResponsesMain {
   // Emit a tuple for each sender-recipient pair in the email.
   // Key is the sender,recipient (unordered).
   // Value is some fields from the email we want to extract.
-  private static Collection<Tuple2<UnorderedUserPair,MessageFields>> readRelevantFields(String path, String content) {
+  private static Collection<Tuple2<Utils.UnorderedUserPair,MessageFields>> readRelevantFields(String path, String content) {
     MimeMessage contentMsg = Utils.stringToMimeMessage(content);
     try {
       if (contentMsg == null || contentMsg.getFrom() == null || contentMsg.getFrom().length < 1
@@ -135,7 +102,7 @@ public class FastestResponsesMain {
       return Arrays.stream(contentMsg.getAllRecipients())
           .distinct()  // turns out you can have dupes across to, cc, bcc lines.
           .map(r -> new Tuple2<>(
-              new UnorderedUserPair(sender, r.toString()),
+              new Utils.UnorderedUserPair(sender, r.toString()),
               new MessageFields(
                 sentDate,
                 path,
@@ -148,13 +115,21 @@ public class FastestResponsesMain {
     }
   }
 
+
+  private static class MessageCmp implements Serializable, Comparator<MessageFields> {
+    @Override
+    public int compare(MessageFields o1, MessageFields o2) {
+      int cmp = o1.subject.length() - o2.subject.length();
+      return cmp != 0 ? cmp : o1.sentDate.compareTo(o2.sentDate);
+    }
+  }
+
   private static Iterable<MessageWithResponse> groupIntoResponses(Iterable<MessageFields> messages) {
     // First, sort them from smallest subject length to largest and then from earliest to latest.
     // This means that replies will always be later in the list.
     List<MessageFields> sortedMessages =
         StreamSupport.stream(messages.spliterator(), false)
-            .sorted((o1, o2) -> o1.sentDate.compareTo(o2.sentDate))
-            .sorted((o1, o2) -> o1.subject.length() - o2.subject.length())
+            .sorted(new MessageCmp())
             .collect(Collectors.toList());
 
     Collection<MessageWithResponse> withResponses = new ArrayList<>();

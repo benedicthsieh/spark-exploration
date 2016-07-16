@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
  */
 public class DirectAndBroadcastMain {
   public static void main(String[] args) {
-    String logPath = Utils.path;
+    String logPath = Utils.emailsPath;
     SparkConf conf = new SparkConf().setAppName("Simple Application");
     JavaSparkContext sc = new JavaSparkContext(conf);
     JavaRDD<String> logData = sc.wholeTextFiles(logPath).values();
